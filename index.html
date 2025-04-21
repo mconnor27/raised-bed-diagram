@@ -746,36 +746,53 @@
         const labelFontSize = Math.max(10, Math.floor(cellSize/7));
         
         ctx.fillStyle = '#333';
-        ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-        ctx.fillText(emoji, centerX, centerY - (cellSize/10));
         
         // Only show text if there's enough space
         if (blockWidth > 40) {
-          ctx.font = `${labelFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-          
-          // Handle multi-word labels with line breaks
-          let showLabel = displayLabel;
           const words = displayLabel.split(' ');
           
           if (words.length > 1 && blockWidth < 100) {
-            // For multi-word labels, break into multiple lines
+            // For multi-word labels with line breaks:
+            // Calculate total content height (emoji + spacing + text lines)
             const lineHeight = labelFontSize * 1.2;
+            const textHeight = lineHeight * words.length;
+            const emojiTextSpacing = labelFontSize * 0.8;
+            const totalContentHeight = emojiFontSize + emojiTextSpacing + textHeight;
             
-            // Adjust starting position based on number of words
-            const totalHeight = lineHeight * (words.length - 1);
-            const startY = centerY + (cellSize/10) - (totalHeight/2);
+            // Start position - centered in the cell
+            const startY = centerY - (totalContentHeight/2);
             
+            // Draw emoji on its own line
+            ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillText(emoji, centerX, startY + emojiFontSize/2);
+            
+            // Draw text lines with proper spacing after emoji
+            ctx.font = `${labelFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
             words.forEach((word, i) => {
-              ctx.fillText(word, centerX, startY + (i * lineHeight));
+              ctx.fillText(word, centerX, startY + emojiFontSize + emojiTextSpacing + (i * lineHeight));
             });
           } else if (blockWidth < 60 && displayLabel.length > 10) {
-            // For very small blocks, just use the first word
-            showLabel = words[0];
-            ctx.fillText(showLabel, centerX, centerY + (cellSize/5));
+            // For very small blocks, show emoji and just first word
+            // Emoji at top, word at bottom
+            const spacing = blockHeight * 0.22;
+            ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillText(emoji, centerX, centerY - spacing);
+            
+            ctx.font = `${labelFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillText(words[0], centerX, centerY + spacing);
           } else {
-            // Single line text for larger blocks
-            ctx.fillText(showLabel, centerX, centerY + (cellSize/5));
+            // Normal size block - emoji on top line, full text on bottom
+            const spacing = blockHeight * 0.18;
+            ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillText(emoji, centerX, centerY - spacing);
+            
+            ctx.font = `${labelFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillText(displayLabel, centerX, centerY + spacing);
           }
+        } else {
+          // For very tiny cells, just show the emoji
+          ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+          ctx.fillText(emoji, centerX, centerY);
         }
       }
 
