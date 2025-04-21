@@ -582,7 +582,7 @@
          selectedIndex = clickedBlock.idx; // Use index for selection highlight consistency
          const detail = plantDetails[clickedBlock.plantKey]; // Use plantKey to find details
          if (detail) {
-           infoDiv.innerHTML = `<h3>${detail.fullName}</h3><p><strong>Care:</strong><br/>${detail.care}</p><br/><p><strong>Harvest Timeline:</strong><br/>${titleCase(detail.harvestTimeline)}</p>`;
+           infoDiv.innerHTML = `<h3>${detail.fullName}</h3><p><strong>Care:</strong><br/>${detail.care}</p><br/><p><strong>Harvest Timeline:</strong><br/>${detail.harvestTimeline}</p>`;
          } else {
            infoDiv.innerHTML = `<em>No details available for ${camelCaseToSpaced(clickedBlock.plantKey)}.</em>`;
          }
