@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raised Bed Diagram</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #efefef; }
+    canvas {
+      border: 2px solid #444;
+      background: #fafafa;
+      display: block;
+      margin: 20px auto;
+      border-radius: 8px;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+    }
+    #info {
+      width: 900px;
+      margin: 10px auto;
+      padding: 15px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-shadow: inset 1px 1px 5px rgba(0,0,0,0.03);
+    }
+    #info h3 { margin: 0 0 8px; color: #333; }
+    #info p { margin: 0; color: #555; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <canvas id="gardenCanvas" width="900" height="900"></canvas>
+  <div id="info"><em>Click a section to see plant care instructions.</em></div>
+  <script>
+    const canvas = document.getElementById('gardenCanvas');
+    const ctx = canvas.getContext('2d');
+    const infoDiv = document.getElementById('info');
+    const gridSize = 6;
+    const cellSize = canvas.width / gridSize;
+    let selectedIndex = null;
+
+    // Map box number to plant label
+    const plantMap = {
+      1: "Zucchini", 2: "Blueberry", 3: "Blackberry",
+      4: "Carrots", 5: "Carrots", 6: "Carrots",
+      7: "Hot Pepper", 8: "Sweet Pepper", 9: "White Strawberry",
+      10: "Carrots", 11: "Carrots", 12: "Carrots",
+      13: "Celery", 14: "Celery", 15: "",
+      // Boxes 16-18,22-24,28-30,34-36 now Everbearing Strawberry (plant 10)
+      16: "Everbearing Strawberry", 17: "Everbearing Strawberry", 18: "Everbearing Strawberry",
+      19: "Cherry Tomato", 20: "Celery", 21: "Celery",
+      22: "Everbearing Strawberry", 23: "Everbearing Strawberry", 24: "Everbearing Strawberry",
+      25: "", 26: "Celery", 27: "Celery",
+      28: "Everbearing Strawberry", 29: "Everbearing Strawberry", 30: "Everbearing Strawberry",
+      31: "Cherry Tomato", 32: "Roma Tomato", 33: "Sweet Pepper",
+      34: "Everbearing Strawberry", 35: "Everbearing Strawberry", 36: "Everbearing Strawberry"
+    };
+
+    // Colors and emojis for each plant label
+    const styleMap = {
+      "Zucchini": { color: '#d5f5e3', emoji: '🥒' },
+      "Blueberry": { color: '#eaf2f8', emoji: '🫐' },
+      "Blackberry": { color: '#f5eef8', emoji: '🫐' },
+      "Carrots": { color: '#fdebd0', emoji: '🥕' },
+      "Hot Pepper": { color: '#fde2e2', emoji: '🌶️' },
+      "Sweet Pepper": { color: '#f9e79f', emoji: '🫑' },
+      "White Strawberry": { color: '#fadbd8', emoji: '🍓' },
+      "Celery": { color: '#d4efdf', emoji: '🥬' },
+      "Cherry Tomato": { color: '#fdebd0', emoji: '🍅' },
+      "Roma Tomato": { color: '#f9e79f', emoji: '🍅' },
+      "Everbearing Strawberry": { color: '#fde2e2', emoji: '🍓' }
+    };
+
+    // Full plant care details
+    const plantDetails = {
+      "Zucchini": { fullName: "Bonnie Zucchini ('Black Beauty') Squash", care: "Full sun, well-drained soil; sow 1in deep; water regularly; harvest when 6–8in long." },
+      "Blueberry": { fullName: "Blueberry (Highbush Hybrid) 'Top Hat'", care: "Full sun; acidic soil; keep soil moist; prune annually." },
+      "Blackberry": { fullName: "Blackberry 'Marion' Rubus Hybrid", care: "Full sun; support with trellis; prune after fruiting; water during bloom and fruiting." },
+      "Carrots": { fullName: "Burpee Carrot 'Nantes Half Long'", care: "Full sun; loose sandy soil; sow 1/4in deep; keep moist; thin seedlings." },
+      "Hot Pepper": { fullName: "Hot Pepper 'Desperado' (Burpee)", care: "Full sun; warm soil; transplant after frost; water evenly; harvest when firm." },
+      "Sweet Pepper": { fullName: "Sweet Pepper (Burpee)", care: "Full sun; transplant after frost; water consistently; support if needed." },
+      "White Strawberry": { fullName: "Strawberry 'Berries Galore® White'", care: "Full sun; well-drained soil; mulch; water evenly; harvest ripe berries." },
+      "Celery": { fullName: "Celery (Bonnie)", care: "Full sun to partial shade; rich moist soil; keep evenly moist; mulch." },
+      "Cherry Tomato": { fullName: "Bonnie Husky Cherry Red Tomato", care: "Full sun; indeterminate; support; water at soil level; harvest when red." },
+      "Roma Tomato": { fullName: "Bonnie Roma Classic Paste Tomato", care: "Full sun; determinate; stake or cage; water regularly; harvest when firm and red." },
+      "Everbearing Strawberry": { fullName: "Everbearing Strawberry (Burpee)", care: "Full sun; fertile well-drained soil; mulch; water regularly; harvest continuously." }
+    };
+
+    let blocks = [];
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = "16px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      blocks = [];
+      const drawn = new Set();
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          const idx = r * gridSize + c + 1;
+          if (drawn.has(idx)) continue;
+          const label = plantMap[idx] || "";
+          let w = 1, h = 1;
+          if (label) {
+            while (c + w < gridSize && plantMap[idx + w] === label) w++;
+            let ok = true;
+            while (r + h < gridSize && ok) {
+              for (let dx = 0; dx < w; dx++) {
+                if (plantMap[idx + h * gridSize + dx] !== label) { ok = false; break; }
+              }
+              if (ok) h++;
+            }
+          }
+          for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) drawn.add(idx + dy * gridSize + dx);
+          drawBlock(c, r, w, h, label, idx);
+        }
+      }
+    }
+
+    function drawBlock(col, row, w, h, label, idx) {
+      const x = col * cellSize, y = row * cellSize;
+      if (label && styleMap[label]) {
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = styleMap[label].color;
+        ctx.fillRect(x, y, w * cellSize, h * cellSize);
+        ctx.globalAlpha = 1;
+      }
+      if (idx === selectedIndex) {
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#007acc';
+        ctx.fillRect(x, y, w * cellSize, h * cellSize);
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 2; ctx.strokeStyle = '#007acc';
+      } else {
+        ctx.lineWidth = 1; ctx.strokeStyle = '#666';
+      }
+      ctx.strokeRect(x, y, w * cellSize, h * cellSize);
+      if (label) {
+        const emoji = styleMap[label]?.emoji || '';
+        const cx = x + (w * cellSize)/2;
+        const cy = y + (h * cellSize)/2;
+        ctx.fillStyle = '#333';
+        ctx.fillText(emoji, cx, cy - 10);
+        ctx.fillText(label, cx, cy + 12);
+      }
+      blocks.push({ x, y, w: w*cellSize, h: h*cellSize, label, idx });
+    }
+
+    function titleCase(str) {
+      return str.toLowerCase().replace(/(^|[^a-zA-Z])([a-z])/g, (m, sep, char) => sep + char.toUpperCase());
+    }
+
+    canvas.addEventListener('click', e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      const blk = blocks.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+      if (blk && blk.label) {
+        selectedIndex = blk.idx;
+        const detail = plantDetails[blk.label];
+        if (detail) {
+          infoDiv.innerHTML = `<h3>${titleCase(detail.fullName)}</h3><p>${titleCase(detail.care)}</p>`;
+        } else infoDiv.innerHTML = `<em>No data available.</em>`;
+      } else {
+        selectedIndex = null;
+        infoDiv.innerHTML = `<em>Click a section to see plant care instructions.</em>`;
+      }
+      drawGrid();
+    });
+
+    document.addEventListener('click', e => {
+      if (e.target !== canvas) {
+        selectedIndex = null;
+        infoDiv.innerHTML = `<em>Click a section to see plant care instructions.</em>`;
+        drawGrid();
+      }
+    });
+
+    drawGrid();
+  </script>
+</body>
+</html>
