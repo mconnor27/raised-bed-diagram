@@ -651,8 +651,18 @@
     function drawGrid() {
       ctx.clearRect(0, 0, canvas.drawWidth, canvas.drawHeight);
       
-      // Font size based on cellSize
-      const adaptiveFontSize = Math.max(12, Math.floor(cellSize/7));
+      // Font size based on cellSize - smaller on desktop
+      let adaptiveFontSize;
+      let emojiBaseFontSize;
+      if (isMobile.any()) {
+        adaptiveFontSize = Math.max(12, Math.floor(cellSize/7));
+        emojiBaseFontSize = Math.max(16, Math.floor(cellSize/4));
+      } else {
+        // Smaller fonts for desktop
+        adaptiveFontSize = Math.max(10, Math.floor(cellSize/9));
+        emojiBaseFontSize = Math.max(14, Math.floor(cellSize/5));
+      }
+      
       ctx.font = `${adaptiveFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -742,8 +752,15 @@
         const centerY = y + blockHeight / 2;
 
         // Size emoji and font based on cell size for responsive display
-        const emojiFontSize = Math.max(16, Math.floor(cellSize/4));
-        const labelFontSize = Math.max(10, Math.floor(cellSize/7));
+        let emojiFontSize, labelFontSize;
+        if (isMobile.any()) {
+          emojiFontSize = Math.max(16, Math.floor(cellSize/4));
+          labelFontSize = Math.max(10, Math.floor(cellSize/7));
+        } else {
+          // Smaller fonts for desktop
+          emojiFontSize = Math.max(14, Math.floor(cellSize/5));
+          labelFontSize = Math.max(9, Math.floor(cellSize/9));
+        }
         
         ctx.fillStyle = '#333';
         
@@ -756,7 +773,7 @@
             // Calculate total content height (emoji + spacing + text lines)
             const lineHeight = labelFontSize * 1.2;
             const textHeight = lineHeight * words.length;
-            const emojiTextSpacing = labelFontSize * 0.8;
+            const emojiTextSpacing = Math.min(lineHeight * 0.7, labelFontSize * 0.7);
             const totalContentHeight = emojiFontSize + emojiTextSpacing + textHeight;
             
             // Start position - centered in the cell
@@ -773,18 +790,26 @@
             });
           } else if (blockWidth < 60 && displayLabel.length > 10) {
             // For very small blocks, show emoji and just first word
-            // Emoji at top, word at bottom
-            const spacing = blockHeight * 0.22;
-            ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-            ctx.fillText(emoji, centerX, centerY - spacing);
+            // Use consistent line spacing approach
+            const lineHeight = labelFontSize * 1.2;
+            const emojiTextSpacing = Math.min(lineHeight * 0.7, labelFontSize * 0.7);
+            const totalContentHeight = emojiFontSize + emojiTextSpacing + labelFontSize;
             
+            // Start position - centered in the cell
+            const startY = centerY - (totalContentHeight/2) + (emojiFontSize/2);
+            
+            // Draw emoji on top line
+            ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillText(emoji, centerX, startY);
+            
+            // Draw first word below with proper spacing
             ctx.font = `${labelFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-            ctx.fillText(words[0], centerX, centerY + spacing);
+            ctx.fillText(words[0], centerX, startY + emojiFontSize + emojiTextSpacing);
           } else {
             // Normal size block - emoji on top line, full text on bottom
             // Use consistent line spacing approach
             const lineHeight = labelFontSize * 1.2;
-            const emojiTextSpacing = Math.min(lineHeight, labelFontSize * 0.8);
+            const emojiTextSpacing = Math.min(lineHeight * 0.7, labelFontSize * 0.7);
             const totalContentHeight = emojiFontSize + emojiTextSpacing + labelFontSize;
             
             // Start position - centered in the cell
@@ -864,6 +889,24 @@
         e.preventDefault();
       }
     }
+    
+    // Deselect when clicking outside the canvas (for desktop)
+    function handleDocumentClick(e) {
+      // Only run on desktop devices
+      if (isMobile.any()) return;
+      
+      // Check if the click was outside the canvas, info div and calendar areas
+      if (e.target !== canvas && 
+          !infoDiv.contains(e.target) && 
+          !document.getElementById('calendar').contains(e.target) && 
+          e.target !== toggleBtn) {
+        if (selectedIndex !== null) {
+          selectedIndex = null;
+          infoDiv.innerHTML = `<em>Click or tap a section to see plant care instructions.</em>`;
+          drawGrid();
+        }
+      }
+    }
 
     // Use appropriate event listeners based on device
     if (isMobile.any()) {
@@ -881,6 +924,9 @@
     } else {
       // Desktop - use mouse events
       canvas.addEventListener('click', handleCanvasInteraction);
+      
+      // Add document-level click handler for deselection on desktop
+      document.addEventListener('click', handleDocumentClick, true);
     }
     
     // Add mouse events for desktop/laptop even if touch is available
