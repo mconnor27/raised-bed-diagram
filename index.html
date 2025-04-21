@@ -13,6 +13,8 @@
       margin: 20px auto;
       border-radius: 8px;
       box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+      width: 900px;
+      height: 900px;
     }
     #info {
       width: 900px;
@@ -28,24 +30,31 @@
   </style>
 </head>
 <body>
-  <canvas id="gardenCanvas" width="900" height="900"></canvas>
+  <canvas id="gardenCanvas"></canvas>
   <div id="info"><em>Click a section to see plant care instructions.</em></div>
   <script>
     const canvas = document.getElementById('gardenCanvas');
     const ctx = canvas.getContext('2d');
     const infoDiv = document.getElementById('info');
+
+    const dpr = window.devicePixelRatio || 1;
+    const displaySize = 900;
+    canvas.width = displaySize * dpr;
+    canvas.height = displaySize * dpr;
+    canvas.style.width = `${displaySize}px`;
+    canvas.style.height = `${displaySize}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     const gridSize = 6;
-    const cellSize = canvas.width / gridSize;
+    const cellSize = displaySize / gridSize;
     let selectedIndex = null;
 
-    // Map box number to plant label
     const plantMap = {
       1: "Zucchini", 2: "Blueberry", 3: "Blackberry",
       4: "Carrots", 5: "Carrots", 6: "Carrots",
       7: "Hot Pepper", 8: "Sweet Pepper", 9: "White Strawberry",
       10: "Carrots", 11: "Carrots", 12: "Carrots",
       13: "Celery", 14: "Celery", 15: "",
-      // Boxes 16-18,22-24,28-30,34-36 now Everbearing Strawberry (plant 10)
       16: "Everbearing Strawberry", 17: "Everbearing Strawberry", 18: "Everbearing Strawberry",
       19: "Cherry Tomato", 20: "Celery", 21: "Celery",
       22: "Everbearing Strawberry", 23: "Everbearing Strawberry", 24: "Everbearing Strawberry",
@@ -55,7 +64,6 @@
       34: "Everbearing Strawberry", 35: "Everbearing Strawberry", 36: "Everbearing Strawberry"
     };
 
-    // Colors and emojis for each plant label
     const styleMap = {
       "Zucchini": { color: '#d5f5e3', emoji: '🥒' },
       "Blueberry": { color: '#eaf2f8', emoji: '🫐' },
@@ -70,7 +78,6 @@
       "Everbearing Strawberry": { color: '#fde2e2', emoji: '🍓' }
     };
 
-    // Full plant care details
     const plantDetails = {
       "Zucchini": { fullName: "Bonnie Zucchini ('Black Beauty') Squash", care: "Full sun, well-drained soil; sow 1in deep; water regularly; harvest when 6–8in long." },
       "Blueberry": { fullName: "Blueberry (Highbush Hybrid) 'Top Hat'", care: "Full sun; acidic soil; keep soil moist; prune annually." },
@@ -151,7 +158,7 @@
 
     canvas.addEventListener('click', e => {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      const x = (e.clientX - rect.left) * dpr, y = (e.clientY - rect.top) * dpr;
       const blk = blocks.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
       if (blk && blk.label) {
         selectedIndex = blk.idx;
