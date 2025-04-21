@@ -13,8 +13,6 @@
       margin: 20px auto;
       border-radius: 8px;
       box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
-      width: 900px;
-      height: 900px;
     }
     #info {
       width: 900px;
@@ -30,7 +28,7 @@
   </style>
 </head>
 <body>
-  <canvas id="gardenCanvas"></canvas>
+  <canvas id="gardenCanvas" width="900" height="900"></canvas>
   <div id="info"><em>Click a section to see plant care instructions.</em></div>
   <script>
     const canvas = document.getElementById('gardenCanvas');
@@ -43,7 +41,7 @@
     canvas.height = displaySize * dpr;
     canvas.style.width = `${displaySize}px`;
     canvas.style.height = `${displaySize}px`;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.scale(dpr, dpr);
 
     const gridSize = 6;
     const cellSize = displaySize / gridSize;
@@ -95,7 +93,7 @@
     let blocks = [];
 
     function drawGrid() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, displaySize, displaySize);
       ctx.font = "16px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -158,7 +156,8 @@
 
     canvas.addEventListener('click', e => {
       const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * dpr, y = (e.clientY - rect.top) * dpr;
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
       const blk = blocks.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
       if (blk && blk.label) {
         selectedIndex = blk.idx;
