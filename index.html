@@ -14,8 +14,8 @@
       border-radius: 8px;
       box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
     }
-    #info {
-      width: 900px;
+    #info, #calendar {
+      width: 1400px;
       margin: 10px auto;
       padding: 15px;
       background: #fff;
@@ -25,15 +25,108 @@
     }
     #info h3 { margin: 0 0 8px; color: #333; }
     #info p { margin: 0; color: #555; line-height: 1.4; }
+    #calendar h3 { margin-top: 0; }
+    .day {
+      display: inline-block;
+      width: 170px;
+      margin: 5px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #f0f0f0;
+      text-align: left;
+      vertical-align: top;
+    }
+    .calendar-toggle {
+      display: block;
+      margin: 10px auto;
+      text-align: center;
+      cursor: pointer;
+      color: #007acc;
+      text-decoration: underline;
+    }
+    .download-link {
+      text-align: center;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <canvas id="gardenCanvas" width="900" height="900"></canvas>
   <div id="info"><em>Click a section to see plant care instructions.</em></div>
+  <div class="calendar-toggle" id="calendarToggle">Show Weekly Care Calendar</div>
+  <div id="calendar" style="display:none"></div>
+  <div class="download-link">
+    <a id="downloadSchedule" href="#" download="full_schedule.txt">Download Full Schedule</a>
+  </div>
+  <script>
+    const plantingDate = new Date('2024-04-20');
+
+    const fullSchedule = {
+      Zucchini: ['Apr 20: Transplant outdoors', 'Apr 27: Fertilize', 'May 10: Begin pest check', 'Jun 1: Harvest start'],
+      Blueberry: ['Apr 20: Established plant', 'Apr 22: Mulch and water deeply', 'May 1: Check soil acidity'],
+      Blackberry: ['Apr 20: Established plant', 'Apr 25: Train vines', 'May 10: Mulch renewal'],
+      Carrot: ['Apr 20: Sow seeds', 'Apr 27: Thin seedlings', 'May 15: Weed and water', 'Jun 10: Begin harvest'],
+      HotPepper: ['Apr 20: Transplant outdoors', 'Apr 27: Fertilize', 'May 5: Stake plants'],
+      SweetPepper: ['Apr 20: Transplant outdoors', 'Apr 27: Fertilize', 'May 5: Stake plants'],
+      StrawberryWhite: ['Apr 20: Water well', 'Apr 25: Fertilize', 'May 10: Watch for runners'],
+      TomatoCherry: ['Apr 20: Transplant outdoors', 'Apr 24: Stake or cage', 'May 5: Fertilize'],
+      Celery: ['Apr 20: Transplant outdoors', 'Apr 25: Water evenly', 'May 3: Apply mulch'],
+      StrawberryEverbearing: ['Apr 20: Water well', 'Apr 25: Fertilize', 'May 15: Remove old leaves'],
+      TomatoRoma: ['Apr 20: Transplant outdoors', 'Apr 24: Stake or cage', 'May 10: Prune side shoots']
+    };
+
+    function camelCaseToSpaced(str) {
+  // Replace any capital letter with a space followed by the lowercase version of that letter
+  // Then capitalize the first letter of the result
+  return str
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^\s/, '')
+    .trim();
+}
+
+    function toggleCalendar() {
+      if (calendarDiv.style.display === 'none') {
+        calendarDiv.style.display = 'block';
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(today.getDate() - today.getDay());
+        let html = '<h3>This Week\'s Care Calendar</h3>';
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(start);
+          date.setDate(start.getDate() + i);
+          const dayName = date.toLocaleDateString(undefined, { weekday: 'short' });
+          const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          html += `<div class="day"><u><strong>${dayName} (${dateStr})</strong></u><br/><br/>`;
+          for (const [plant, tasks] of Object.entries(fullSchedule)) {
+            plant_spaced = camelCaseToSpaced(plant);
+            const thisDay = `${dateStr}`;
+            const matches = tasks.filter(t => t.includes(dateStr));
+            if (matches.length) {
+              html += `<em>${plant_spaced}</em><ul style="padding-left:8px;text-align:left;">`;
+              matches.forEach(task => html += `<li>${task.split(': ')[1]}</li>`);
+              html += '</ul>';
+            }
+          }
+          html += '</div>';
+        }
+        calendarDiv.innerHTML = html;
+      } else {
+        calendarDiv.style.display = 'none';
+      }
+    }
+
+    const scheduleText = Object.entries(fullSchedule).map(([plant, tasks]) => {
+      return `${plant}\n${tasks.map(t => ' - ' + t).join('\n')}`;
+    }).join('\n\n');
+    document.getElementById('downloadSchedule').href = URL.createObjectURL(new Blob([scheduleText], { type: 'text/plain' }));
+  </script>
   <script>
     const canvas = document.getElementById('gardenCanvas');
     const ctx = canvas.getContext('2d');
     const infoDiv = document.getElementById('info');
+    const calendarDiv = document.getElementById('calendar');
+    const toggleBtn = document.getElementById('calendarToggle');
+    toggleBtn.addEventListener('click', toggleCalendar);
 
     const dpr = window.devicePixelRatio || 1;
     const displaySize = 900;
