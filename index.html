@@ -782,12 +782,21 @@
             ctx.fillText(words[0], centerX, centerY + spacing);
           } else {
             // Normal size block - emoji on top line, full text on bottom
-            const spacing = blockHeight * 0.18;
-            ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-            ctx.fillText(emoji, centerX, centerY - spacing);
+            // Use consistent line spacing approach
+            const lineHeight = labelFontSize * 1.2;
+            const emojiTextSpacing = Math.min(lineHeight, labelFontSize * 0.8);
+            const totalContentHeight = emojiFontSize + emojiTextSpacing + labelFontSize;
             
+            // Start position - centered in the cell
+            const startY = centerY - (totalContentHeight/2) + (emojiFontSize/2);
+            
+            // Draw emoji on top line
+            ctx.font = `${emojiFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillText(emoji, centerX, startY);
+            
+            // Draw text below with proper spacing
             ctx.font = `${labelFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-            ctx.fillText(displayLabel, centerX, centerY + spacing);
+            ctx.fillText(displayLabel, centerX, startY + emojiFontSize + emojiTextSpacing);
           }
         } else {
           // For very tiny cells, just show the emoji
