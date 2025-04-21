@@ -15,26 +15,43 @@
       box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
     }
     #info, #calendar {
-      width: 1400px;
+      width: 1400px; /* Adjusted width to better fit 7 days */
+      max-width: 95%; /* Added max-width for responsiveness */
       margin: 10px auto;
       padding: 15px;
       background: #fff;
       border: 1px solid #ccc;
       border-radius: 6px;
       box-shadow: inset 1px 1px 5px rgba(0,0,0,0.03);
+      box-sizing: border-box; /* Include padding in width */
     }
     #info h3 { margin: 0 0 8px; color: #333; }
     #info p { margin: 0; color: #555; line-height: 1.4; }
-    #calendar h3 { margin-top: 0; }
+    #calendar h3 { margin-top: 0; text-align: center; margin-bottom: 15px;}
+    .calendar-grid { /* Added a container for days */
+        display: flex;
+        flex-wrap: wrap; /* Allow wrapping on smaller screens if needed */
+        justify-content: space-between; /* Distribute space */
+    }
     .day {
-      display: inline-block;
-      width: 170px;
+      display: inline-block; /* Changed back, flex handles layout */
+      width: calc(100% / 7 - 12px); /* Calculate width for 7 days minus margin */
+      min-height: 100px; /* Ensure days have some height */
       margin: 5px;
       padding: 10px;
       border-radius: 6px;
       background: #f0f0f0;
       text-align: left;
       vertical-align: top;
+      box-sizing: border-box; /* Include padding in width */
+    }
+    .day ul {
+        padding-left: 18px; /* Adjusted padding */
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+    .day li {
+        margin-bottom: 3px;
     }
     .calendar-toggle {
       display: block;
@@ -48,86 +65,291 @@
       text-align: center;
       margin-top: 10px;
     }
+    /* Navigation buttons styling */
+    .calendar-nav {
+      text-align: center;
+      margin: 10px 0 20px 0; /* Added bottom margin */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .week-nav-btn {
+      background: #007acc;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      margin: 0 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .week-nav-btn:hover {
+      background: #005c99;
+    }
+    .current-week {
+      font-weight: bold;
+      margin: 0 15px;
+      min-width: 150px; /* Adjusted min-width */
+      text-align: center;
+    }
+     /* Responsive adjustments */
+     @media (max-width: 1400px) {
+        .day {
+            width: calc(100% / 4 - 12px); /* 4 days per row */
+        }
+     }
+     @media (max-width: 768px) {
+        .day {
+            width: calc(100% / 2 - 12px); /* 2 days per row */
+        }
+        .calendar-nav {
+            flex-wrap: wrap;
+        }
+        .current-week {
+             width: 100%;
+             margin: 10px 0;
+             order: -1; /* Move week display above buttons on wrap */
+        }
+     }
+     @media (max-width: 480px) {
+        .day {
+            width: calc(100% - 12px); /* 1 day per row */
+        }
+     }
   </style>
 </head>
 <body>
   <canvas id="gardenCanvas" width="900" height="900"></canvas>
   <div id="info"><em>Click a section to see plant care instructions.</em></div>
   <div class="calendar-toggle" id="calendarToggle">Show Weekly Care Calendar</div>
-  <div id="calendar" style="display:none"></div>
+  <div id="calendar" style="display:none">
+    </div>
   <div class="download-link">
     <a id="downloadSchedule" href="#" download="full_schedule.txt">Download Full Schedule</a>
   </div>
+
   <script>
     const plantingDate = new Date('2024-04-20');
+    let currentWeekStart = null; // Track the current week being displayed
 
-const fullSchedule = { 
-      Zucchini: ['Apr 20: Transplant outdoors', 'Apr 27: Water deeply; apply fertilizer', 'May 25: Plants 12-18in tall with flowers', 'Jun 15-20: First harvest expected (55-60 days)', 'Aug 1: Peak production'], 
-      Blueberry: ['Apr 20: Established plant', 'Apr 22: Mulch with pine needles; water deeply', 'May 15: New spring growth established', 'Jun 1: Flowering period', 'Jul-Aug: Possible light harvest in first year'], 
-      Blackberry: ['Apr 20: Established plant', 'Apr 25: Train vines on trellis', 'May 15: New cane growth 12-24in long', 'Jun 10: Flowering begins', 'Jul-Aug: Possible light harvest in first year'],       
-      Carrot: ['Apr 20: Sow seeds', 'Apr 30: Seedlings emerge', 'May 10: Thin seedlings to 2in apart', 'Jun 1: Tops 6-8in tall', 'Jun 30-Jul 15: Begin harvest (70-85 days)'], 
-      HotPepper: ['Apr 20: Transplant outdoors', 'May 5: Apply fertilizer; new growth established', 'Jun 15: Flowering begins', 'Jul 15-25: First peppers ready (85-95 days)', 'Aug 15: Peak production'], 
-      SweetPepper: ['Apr 20: Transplant outdoors', 'May 5: Apply fertilizer; new growth established', 'Jun 15: Flowering begins', 'Jul 20-30: First peppers ready (90-100 days)', 'Aug 20: Peak production'], 
-      StrawberryWhite: ['Apr 20: Transplant outdoors', 'Apr 27: Apply fertilizer', 'May 15: Flower development begins', 'Jun 15: First berries ripen (55 days)', 'Jul 1: Peak production'], 
-      Celery: ['Apr 20: Transplant outdoors', 'Apr 27: Apply rich compost', 'May 25: Plants 8-12in tall', 'Jul 15-25: Begin harvest (85-95 days)', 'Aug 1: Stalks at ideal size'], 
-      TomatoCherry: ['Apr 20: Transplant outdoors', 'Apr 24: Stake or cage plants', 'May 20: Plants 24-36in tall', 'Jul 1-10: First tomatoes ripen (70-80 days)', 'Aug 1: Peak production'], 
-      TomatoRoma: ['Apr 20: Transplant outdoors', 'Apr 24: Stake or cage plants', 'May 20: Plants 24-30in tall', 'Jul 5-15: First tomatoes ripen (75-85 days)', 'Aug 1: Peak production'], 
+    // --- Plant Schedule Data ---
+    const fullSchedule = {
+      Zucchini: ['Apr 20: Transplant outdoors', 'Apr 27: Water deeply; apply fertilizer', 'May 25: Plants 12-18in tall with flowers', 'Jun 15-20: First harvest expected (55-60 days)', 'Aug 1: Peak production'],
+      Blueberry: ['Apr 20: Established plant', 'Apr 22: Mulch with pine needles; water deeply', 'May 15: New spring growth established', 'Jun 1: Flowering period', 'Jul-Aug: Possible light harvest in first year'],
+      Blackberry: ['Apr 20: Established plant', 'Apr 25: Train vines on trellis', 'May 15: New cane growth 12-24in long', 'Jun 10: Flowering begins', 'Jul-Aug: Possible light harvest in first year'],
+      Carrot: ['Apr 20: Sow seeds', 'Apr 30: Seedlings emerge', 'May 10: Thin seedlings to 2in apart', 'Jun 1: Tops 6-8in tall', 'Jun 30-Jul 15: Begin harvest (70-85 days)'],
+      HotPepper: ['Apr 20: Transplant outdoors', 'May 5: Apply fertilizer; new growth established', 'Jun 15: Flowering begins', 'Jul 15-25: First peppers ready (85-95 days)', 'Aug 15: Peak production'],
+      SweetPepper: ['Apr 20: Transplant outdoors', 'May 5: Apply fertilizer; new growth established', 'Jun 15: Flowering begins', 'Jul 20-30: First peppers ready (90-100 days)', 'Aug 20: Peak production'],
+      StrawberryWhite: ['Apr 20: Transplant outdoors', 'Apr 27: Apply fertilizer', 'May 15: Flower development begins', 'Jun 15: First berries ripen (55 days)', 'Jul 1: Peak production'],
+      Celery: ['Apr 20: Transplant outdoors', 'Apr 27: Apply rich compost', 'May 25: Plants 8-12in tall', 'Jul 15-25: Begin harvest (85-95 days)', 'Aug 1: Stalks at ideal size'],
+      TomatoCherry: ['Apr 20: Transplant outdoors', 'Apr 24: Stake or cage plants', 'May 20: Plants 24-36in tall', 'Jul 1-10: First tomatoes ripen (70-80 days)', 'Aug 1: Peak production'],
+      TomatoRoma: ['Apr 20: Transplant outdoors', 'Apr 24: Stake or cage plants', 'May 20: Plants 24-30in tall', 'Jul 5-15: First tomatoes ripen (75-85 days)', 'Aug 1: Peak production'],
       StrawberryEverbearing: ['Apr 20: Transplant outdoors', 'Apr 27: Apply fertilizer', 'May 15: Remove first flowers to strengthen plants', 'Jun 20-Jul 1: First berries ripen (60-70 days)', 'Aug-Sep: Second major fruiting period']
     };
 
+    // --- Utility Functions ---
     function camelCaseToSpaced(str) {
-  // Replace any capital letter with a space followed by the lowercase version of that letter
-  // Then capitalize the first letter of the result
-  return str
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^\s/, '')
-    .trim();
-}
+      return str.replace(/([A-Z])/g, ' $1').replace(/^\s/, '').trim();
+    }
+
+    function formatWeekRange(startDate) {
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      // Use en-US locale for consistency
+      const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `${startStr} - ${endStr}`;
+    }
+
+    // Check if a date matches a task description (using en-US locale)
+    function dateMatchesTask(date, taskDateStr) {
+        const dateMonthStr = date.toLocaleDateString('en-US', { month: 'short' });
+        const dateDayNum = date.getDate();
+
+        // Handle exact date formats like "Apr 20"
+        // Use a more precise regex: ^Month Day$
+        const exactMatchRegex = new RegExp(`^${dateMonthStr}\\s+${dateDayNum}$`, 'i');
+        if (exactMatchRegex.test(taskDateStr.trim())) {
+            //console.log(`Exact match: ${dateMonthStr} ${dateDayNum} == ${taskDateStr}`);
+            return true;
+        }
+
+        // Handle date ranges like "Jun 15-20"
+        const dayRangeMatch = taskDateStr.match(/^(\w+)\s+(\d+)-(\d+)$/i);
+        if (dayRangeMatch) {
+            const [, month, startDayStr, endDayStr] = dayRangeMatch;
+            const startDay = parseInt(startDayStr);
+            const endDay = parseInt(endDayStr);
+            if (dateMonthStr.toLowerCase() === month.toLowerCase() && dateDayNum >= startDay && dateDayNum <= endDay) {
+                //console.log(`Day range match: ${dateMonthStr} ${dateDayNum} in ${taskDateStr}`);
+                return true;
+            }
+        }
+
+        // Handle month ranges like "Jul-Aug" or "Aug-Sep"
+        const monthRangeMatch = taskDateStr.match(/^(\w+)-(\w+)$/i);
+        if (monthRangeMatch && !taskDateStr.includes(' ')) { // Ensure it's only Month-Month
+             const [, startMonth, endMonth] = monthRangeMatch;
+             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+             const startIdx = monthNames.findIndex(m => m.toLowerCase() === startMonth.toLowerCase());
+             const endIdx = monthNames.findIndex(m => m.toLowerCase() === endMonth.toLowerCase());
+             const dateIdx = monthNames.findIndex(m => m.toLowerCase() === dateMonthStr.toLowerCase());
+
+             if (startIdx !== -1 && endIdx !== -1 && dateIdx !== -1) {
+                 // Handle wrap-around case (e.g., Nov-Jan) - assumes ranges are within a reasonable span
+                 if (startIdx <= endIdx) {
+                     // Normal range (e.g., Jul-Aug)
+                     if (dateIdx >= startIdx && dateIdx <= endIdx) {
+                        //  console.log(`Month range match (normal): ${dateMonthStr} in ${taskDateStr}`);
+                         return true;
+                     }
+                 } else {
+                     // Range wraps year (e.g., Nov-Feb)
+                     if (dateIdx >= startIdx || dateIdx <= endIdx) {
+                        //  console.log(`Month range match (wrap): ${dateMonthStr} in ${taskDateStr}`);
+                         return true;
+                     }
+                 }
+             }
+        }
+        // console.log(`No match for ${dateMonthStr} ${dateDayNum} in ${taskDateStr}`);
+        return false;
+    }
+
+
+    // --- Calendar Navigation and Update ---
+    function previousWeek() {
+      if (!currentWeekStart) return; // Safety check
+      const newStart = new Date(currentWeekStart);
+      newStart.setDate(currentWeekStart.getDate() - 7);
+      currentWeekStart = newStart;
+      updateCalendar();
+    }
+
+    function nextWeek() {
+      if (!currentWeekStart) return; // Safety check
+      const newStart = new Date(currentWeekStart);
+      newStart.setDate(currentWeekStart.getDate() + 7);
+      currentWeekStart = newStart;
+      updateCalendar();
+    }
+
+    function updateCalendar() {
+      if (!currentWeekStart) return;
+
+      let html = '<div class="calendar-nav">';
+      html += '<button class="week-nav-btn" id="prevWeek">← Previous Week</button>';
+      html += `<span class="current-week">${formatWeekRange(currentWeekStart)}</span>`;
+      html += '<button class="week-nav-btn" id="nextWeek">Next Week →</button>';
+      html += '</div>';
+
+      html += '<h3>Weekly Care Calendar</h3>';
+      html += '<div class="calendar-grid">'; // Start grid container
+
+      // Loop through 7 days of the week
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentWeekStart);
+        date.setDate(currentWeekStart.getDate() + i);
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        html += `<div class="day"><u><strong>${dayName} (${dateStr})</strong></u><br/><br/>`;
+
+        let foundTasks = false; // Reset flag for each day
+
+        // --->>> CORRECTED LOGIC BELOW <<<---
+        // Loop through each plant in the schedule
+        for (const [plant, tasks] of Object.entries(fullSchedule)) {
+          let plant_spaced = camelCaseToSpaced(plant);
+
+          // Find tasks for THIS specific plant matching the current date
+          const matches = tasks.filter(task => {
+            const taskDate = task.split(': ')[0];
+            return dateMatchesTask(date, taskDate);
+          });
+
+          // If THIS plant has tasks for this day:
+          if (matches.length > 0) {
+            // Add the heading and list structure *specifically for this plant*
+            html += `<em>${plant_spaced}</em>`; // Plant name heading
+            // Consistent styling for the list
+            html += `<ul style="padding-left: 18px; text-align: left; margin-top: 5px; margin-bottom: 5px;">`;
+
+            // Add each matched task as a list item
+            matches.forEach(task => {
+              html += `<li style="margin-bottom: 3px;">${task.split(': ')[1]}</li>`;
+            });
+
+            html += `</ul>`; // End the list *for this plant*
+
+            // Mark that we found at least one task for this day (to prevent "No scheduled tasks")
+            foundTasks = true;
+          }
+        } // End loop through plants for this day
+        // --->>> END OF CORRECTION <<<---
+
+        // If no tasks were found for ANY plant on this day
+        if (!foundTasks) {
+          html += '<em>No scheduled tasks</em>';
+        }
+
+        html += '</div>'; // Close day div
+      } // End of day loop
+
+      html += '</div>'; // End calendar-grid
+      calendarDiv.innerHTML = html; // Update the DOM
+
+      // Re-attach event listeners for navigation buttons
+      const prevButton = document.getElementById('prevWeek');
+      const nextButton = document.getElementById('nextWeek');
+
+      if (prevButton) {
+          prevButton.addEventListener('click', previousWeek);
+      } else {
+          console.error("Could not find #prevWeek element after update.");
+      }
+
+      if (nextButton) {
+          nextButton.addEventListener('click', nextWeek);
+      } else {
+          console.error("Could not find #nextWeek element after update.");
+      }
+    }
 
     function toggleCalendar() {
       if (calendarDiv.style.display === 'none') {
-        calendarDiv.style.display = 'block';
+        // Initialize the current week if it's not set or calendar is hidden
         const today = new Date();
-        const start = new Date(today);
-        start.setDate(today.getDate() - today.getDay());
-        let html = '<h3>This Week\'s Care Calendar</h3>';
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(start);
-          date.setDate(start.getDate() + i);
-          const dayName = date.toLocaleDateString(undefined, { weekday: 'short' });
-          const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-          html += `<div class="day"><u><strong>${dayName} (${dateStr})</strong></u><br/><br/>`;
-          for (const [plant, tasks] of Object.entries(fullSchedule)) {
-            plant_spaced = camelCaseToSpaced(plant);
-            const thisDay = `${dateStr}`;
-            const matches = tasks.filter(t => t.includes(dateStr));
-            if (matches.length) {
-              html += `<em>${plant_spaced}</em><ul style="padding-left:8px;text-align:left;">`;
-              matches.forEach(task => html += `<li>${task.split(': ')[1]}</li>`);
-              html += '</ul>';
-            }
-          }
-          html += '</div>';
-        }
-        calendarDiv.innerHTML = html;
+        currentWeekStart = new Date(today);
+        // Start week on Sunday
+        currentWeekStart.setDate(today.getDate() - today.getDay());
+
+        calendarDiv.style.display = 'block';
+        updateCalendar(); // Populate the calendar content
       } else {
         calendarDiv.style.display = 'none';
       }
     }
 
+    // --- Schedule Download ---
     const scheduleText = Object.entries(fullSchedule).map(([plant, tasks]) => {
-      return `${plant}\n${tasks.map(t => ' - ' + t).join('\n')}`;
-    }).join('\n\n');
-    document.getElementById('downloadSchedule').href = URL.createObjectURL(new Blob([scheduleText], { type: 'text/plain' }));
-  </script>
-  <script>
+        return `${camelCaseToSpaced(plant)}\n${tasks.map(t => ' - ' + t).join('\n')}`;
+      }).join('\n\n');
+    const blob = new Blob([scheduleText], { type: 'text/plain' });
+    document.getElementById('downloadSchedule').href = URL.createObjectURL(blob);
+
+
+    // --- Canvas Drawing & Interaction ---
     const canvas = document.getElementById('gardenCanvas');
     const ctx = canvas.getContext('2d');
     const infoDiv = document.getElementById('info');
-    const calendarDiv = document.getElementById('calendar');
+    const calendarDiv = document.getElementById('calendar'); // Already defined
     const toggleBtn = document.getElementById('calendarToggle');
     toggleBtn.addEventListener('click', toggleCalendar);
 
+    // HiDPI scaling
     const dpr = window.devicePixelRatio || 1;
     const displaySize = 900;
     canvas.width = displaySize * dpr;
@@ -140,194 +362,253 @@ const fullSchedule = {
     const cellSize = displaySize / gridSize;
     let selectedIndex = null;
 
+    // --- Plant Mapping & Styling ---
     const plantMap = {
       1: "Zucchini", 2: "Blueberry", 3: "Blackberry",
-      4: "Carrots", 5: "Carrots", 6: "Carrots",
-      7: "Hot Pepper", 8: "Sweet Pepper", 9: "White Strawberry",
-      10: "Carrots", 11: "Carrots", 12: "Carrots",
+      4: "Carrot", 5: "Carrot", 6: "Carrot", // Corrected mapping
+      7: "HotPepper", 8: "SweetPepper", 9: "StrawberryWhite", // Corrected mapping
+      10: "Carrot", 11: "Carrot", 12: "Carrot", // Corrected mapping
       13: "Celery", 14: "Celery", 15: "",
-      16: "Everbearing Strawberry", 17: "Everbearing Strawberry", 18: "Everbearing Strawberry",
-      19: "Cherry Tomato", 20: "Celery", 21: "Celery",
-      22: "Everbearing Strawberry", 23: "Everbearing Strawberry", 24: "Everbearing Strawberry",
-      25: "", 26: "Celery", 27: "Celery",
-      28: "Everbearing Strawberry", 29: "Everbearing Strawberry", 30: "Everbearing Strawberry",
-      31: "Cherry Tomato", 32: "Roma Tomato", 33: "Sweet Pepper",
-      34: "Everbearing Strawberry", 35: "Everbearing Strawberry", 36: "Everbearing Strawberry"
+      16: "StrawberryEverbearing", 17: "StrawberryEverbearing", 18: "StrawberryEverbearing", // Corrected mapping
+      19: "TomatoCherry", 20: "Celery", 21: "Celery", // Corrected mapping
+      22: "StrawberryEverbearing", 23: "StrawberryEverbearing", 24: "StrawberryEverbearing", // Corrected mapping
+      25: "", 26: "Celery", 27: "Celery", // Corrected mapping
+      28: "StrawberryEverbearing", 29: "StrawberryEverbearing", 30: "StrawberryEverbearing", // Corrected mapping
+      31: "TomatoCherry", 32: "TomatoRoma", 33: "SweetPepper", // Corrected mapping
+      34: "StrawberryEverbearing", 35: "StrawberryEverbearing", 36: "StrawberryEverbearing" // Corrected mapping
     };
 
     const styleMap = {
       "Zucchini": { color: '#d5f5e3', emoji: '🥒' },
       "Blueberry": { color: '#eaf2f8', emoji: '🫐' },
-      "Blackberry": { color: '#f5eef8', emoji: '🫐' },
-      "Carrots": { color: '#fdebd0', emoji: '🥕' },
-      "Hot Pepper": { color: '#fde2e2', emoji: '🌶️' },
-      "Sweet Pepper": { color: '#f9e79f', emoji: '🫑' },
-      "White Strawberry": { color: '#fadbd8', emoji: '🍓' },
+      "Blackberry": { color: '#f5eef8', emoji: '🫐' }, // Consider a different emoji/color?
+      "Carrot": { color: '#fdebd0', emoji: '🥕' }, // Corrected name
+      "HotPepper": { color: '#fde2e2', emoji: '🌶️' }, // Corrected name
+      "SweetPepper": { color: '#f9e79f', emoji: '🫑' }, // Corrected name
+      "StrawberryWhite": { color: '#fadbd8', emoji: '🍓' }, // Corrected name
       "Celery": { color: '#d4efdf', emoji: '🥬' },
-      "Cherry Tomato": { color: '#fdebd0', emoji: '🍅' },
-      "Roma Tomato": { color: '#f9e79f', emoji: '🍅' },
-      "Everbearing Strawberry": { color: '#fde2e2', emoji: '🍓' }
+      "TomatoCherry": { color: '#fdebd0', emoji: '🍅' }, // Corrected name (map uses CherryTomato)
+      "TomatoRoma": { color: '#f9e79f', emoji: '🍅' }, // Corrected name (map uses RomaTomato)
+      "StrawberryEverbearing": { color: '#fde2e2', emoji: '🍓' } // Corrected name
     };
 
-const plantDetails = {
-    "Zucchini": { 
-        fullName: "Bonnie Zucchini ('Black Beauty') Squash", 
-        care: "Full sun, well-drained soil; space plants 36in apart; water 1-2in weekly; fertilize monthly with balanced fertilizer; monitor for powdery mildew; hand-pollinate flowers for better yields; harvest when 6–8in long to encourage production.", 
-        harvestTimeline: "50-60 days to maturity; first harvest around June 10-20; peak production July-August" 
-    },
-    
-    "Blueberry": { 
-        fullName: "Blueberry (Highbush Hybrid) 'Top Hat'", 
-        care: "Full sun; acidic soil (pH 4.5-5.5); apply acid-loving plant fertilizer in spring; keep soil consistently moist but not soggy; mulch with pine needles or bark; protect with bird netting during fruiting; prune in late winter to remove dead wood.", 
-        harvestTimeline: "Minimal harvest in first year (July-August); full production in 3-4 years" 
-    },
-    
-    "Blackberry": { 
-        fullName: "Blackberry 'Marion' Rubus Hybrid", 
-        care: "Full sun; support with trellis; space 4-6ft apart; distinguish between primocanes (first-year) and floricanes (fruiting); prune floricanes after fruiting; mulch heavily; water deeply during bloom and fruiting; protect from birds.", 
-        harvestTimeline: "Minimal harvest in first year (July-August); full production in year 2-3" 
-    },
-    
-    "Carrots": { 
-        fullName: "Burpee Carrot 'Nantes Half Long'", 
-        care: "Full sun; deep, loose sandy soil free of stones; sow 1/4in deep in rows 12in apart; thin seedlings to 2in spacing; keep soil consistently moist; avoid high-nitrogen fertilizers; prevent shoulder greening with soil cover.", 
-        harvestTimeline: "65-75 days to maturity; harvest around June 25-July 5" 
-    },
-    
-    "Hot Pepper": { 
-        fullName: "Hot Pepper 'Desperado' (Burpee)", 
-        care: "Full sun; warm soil (60°F+); space 18-24in apart; pinch early blooms to strengthen plant; use calcium-rich fertilizer to prevent blossom end rot; avoid overwatering; mulch to maintain even moisture; harvest when firm and fully colored.", 
-        harvestTimeline: "85-95 days to maturity; first harvest around July 15-25" 
-    },
-    
-    "Sweet Pepper": { 
-        fullName: "Sweet Pepper (Burpee)", 
-        care: "Full sun; warm soil (60°F+); space 18-24in apart; support with stakes or cages for heavy fruit; water consistently (1-2in weekly); avoid high-nitrogen fertilizers once fruiting begins; harvest when firm and fully colored.", 
-        harvestTimeline: "90-100 days to maturity; first harvest around July 20-30" 
-    },
-    
-    "White Strawberry": { 
-        fullName: "Strawberry 'Berries Galore® White'", 
-        care: "Full sun; well-drained, fertile soil; plant 12-18in apart; mulch with straw to keep berries clean; remove runners for larger berries; water evenly (1-1.5in weekly); apply balanced fertilizer monthly; protect from birds and slugs.", 
-        harvestTimeline: "50-60 days to maturity; first harvest around June 10-20" 
-    },
-    
-    "Celery": { 
-        fullName: "Celery (Bonnie)", 
-        care: "Full sun to partial shade (afternoon shade in hot climates); rich, moist soil with plenty of organic matter; space 8-10in apart; keep consistently moist; blanch stalks for milder flavor by hilling soil or wrapping; mulch heavily; protect from extreme heat.", 
-        harvestTimeline: "85-95 days to maturity; harvest around July 15-25" 
-    },
-    
-    "Cherry Tomato": { 
-        fullName: "Bonnie Husky Cherry Red Tomato", 
-        care: "Full sun; indeterminate variety requiring tall support; space 24-36in apart; prune suckers for better air circulation; provide calcium to prevent blossom end rot; water deeply at soil level (1-2in weekly); avoid wetting foliage; harvest when fully red.", 
-        harvestTimeline: "70-80 days to maturity; first harvest around July 1-10; continues until frost" 
-    },
-    
-    "Roma Tomato": { 
-        fullName: "Bonnie Roma Classic Paste Tomato", 
-        care: "Full sun; determinate variety needing medium support; space 24-30in apart; water consistently to prevent cracking; provide calcium-rich fertilizer; monitor for blight; stake or cage early; harvest when firm and fully red.", 
-        harvestTimeline: "75-85 days to maturity; harvest around July 5-15; concentrated harvest period" 
-    },
-    
-    "Everbearing Strawberry": { 
-        fullName: "Everbearing Strawberry (Burpee)", 
-        care: "Full sun; fertile, well-drained soil with pH 5.5-6.8; space 12-18in apart; remove first set of flowers to establish plants; mulch with straw; water regularly avoiding crown; apply balanced fertilizer monthly; protect from frost and birds.", 
-        harvestTimeline: "60-70 days to first harvest (around June 20-July 1); second flush in late summer/early fall" 
-    }
-};
+     // Corrected keys to match plantMap and fullSchedule keys
+    const plantDetails = {
+        "Zucchini": {
+            fullName: "Bonnie Zucchini ('Black Beauty') Squash",
+            care: "Full sun, well-drained soil; space plants 36in apart; water 1-2in weekly; fertilize monthly with balanced fertilizer; monitor for powdery mildew; hand-pollinate flowers for better yields; harvest when 6–8in long to encourage production.",
+            harvestTimeline: "50-60 days to maturity; first harvest around June 10-20; peak production July-August"
+        },
+        "Blueberry": {
+            fullName: "Blueberry (Highbush Hybrid) 'Top Hat'",
+            care: "Full sun; acidic soil (pH 4.5-5.5); apply acid-loving plant fertilizer in spring; keep soil consistently moist but not soggy; mulch with pine needles or bark; protect with bird netting during fruiting; prune in late winter to remove dead wood.",
+            harvestTimeline: "Minimal harvest in first year (July-August); full production in 3-4 years"
+        },
+        "Blackberry": {
+            fullName: "Blackberry 'Marion' Rubus Hybrid",
+            care: "Full sun; support with trellis; space 4-6ft apart; distinguish between primocanes (first-year) and floricanes (fruiting); prune floricanes after fruiting; mulch heavily; water deeply during bloom and fruiting; protect from birds.",
+            harvestTimeline: "Minimal harvest in first year (July-August); full production in year 2-3"
+        },
+        "Carrot": { // Corrected Key
+            fullName: "Burpee Carrot 'Nantes Half Long'",
+            care: "Full sun; deep, loose sandy soil free of stones; sow 1/4in deep in rows 12in apart; thin seedlings to 2in spacing; keep soil consistently moist; avoid high-nitrogen fertilizers; prevent shoulder greening with soil cover.",
+            harvestTimeline: "65-75 days to maturity; harvest around June 25-July 5"
+        },
+        "HotPepper": { // Corrected Key
+            fullName: "Hot Pepper 'Desperado' (Burpee)",
+            care: "Full sun; warm soil (60°F+); space 18-24in apart; pinch early blooms to strengthen plant; use calcium-rich fertilizer to prevent blossom end rot; avoid overwatering; mulch to maintain even moisture; harvest when firm and fully colored.",
+            harvestTimeline: "85-95 days to maturity; first harvest around July 15-25"
+        },
+        "SweetPepper": { // Corrected Key
+            fullName: "Sweet Pepper (Burpee)",
+            care: "Full sun; warm soil (60°F+); space 18-24in apart; support with stakes or cages for heavy fruit; water consistently (1-2in weekly); avoid high-nitrogen fertilizers once fruiting begins; harvest when firm and fully colored.",
+            harvestTimeline: "90-100 days to maturity; first harvest around July 20-30"
+        },
+        "StrawberryWhite": { // Corrected Key
+            fullName: "Strawberry 'Berries Galore® White'",
+            care: "Full sun; well-drained, fertile soil; plant 12-18in apart; mulch with straw to keep berries clean; remove runners for larger berries; water evenly (1-1.5in weekly); apply balanced fertilizer monthly; protect from birds and slugs.",
+            harvestTimeline: "50-60 days to maturity; first harvest around June 10-20"
+        },
+        "Celery": {
+            fullName: "Celery (Bonnie)",
+            care: "Full sun to partial shade (afternoon shade in hot climates); rich, moist soil with plenty of organic matter; space 8-10in apart; keep consistently moist; blanch stalks for milder flavor by hilling soil or wrapping; mulch heavily; protect from extreme heat.",
+            harvestTimeline: "85-95 days to maturity; harvest around July 15-25"
+        },
+        "TomatoCherry": { // Corrected Key
+            fullName: "Bonnie Husky Cherry Red Tomato",
+            care: "Full sun; indeterminate variety requiring tall support; space 24-36in apart; prune suckers for better air circulation; provide calcium to prevent blossom end rot; water deeply at soil level (1-2in weekly); avoid wetting foliage; harvest when fully red.",
+            harvestTimeline: "70-80 days to maturity; first harvest around July 1-10; continues until frost"
+        },
+        "TomatoRoma": { // Corrected Key
+            fullName: "Bonnie Roma Classic Paste Tomato",
+            care: "Full sun; determinate variety needing medium support; space 24-30in apart; water consistently to prevent cracking; provide calcium-rich fertilizer; monitor for blight; stake or cage early; harvest when firm and fully red.",
+            harvestTimeline: "75-85 days to maturity; harvest around July 5-15; concentrated harvest period"
+        },
+        "StrawberryEverbearing": { // Corrected Key
+            fullName: "Everbearing Strawberry (Burpee)",
+            care: "Full sun; fertile, well-drained soil with pH 5.5-6.8; space 12-18in apart; remove first set of flowers to establish plants; mulch with straw; water regularly avoiding crown; apply balanced fertilizer monthly; protect from frost and birds.",
+            harvestTimeline: "60-70 days to first harvest (around June 20-July 1); second flush in late summer/early fall"
+        }
+    };
 
-    let blocks = [];
+    let blocks = []; // Store drawn block info for click detection
 
     function drawGrid() {
-      ctx.clearRect(0, 0, displaySize, displaySize);
+      ctx.clearRect(0, 0, displaySize, displaySize); // Use scaled size
       ctx.font = "16px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      blocks = [];
-      const drawn = new Set();
+      blocks = []; // Clear previous block data
+      const drawn = new Set(); // Keep track of drawn indices
+
       for (let r = 0; r < gridSize; r++) {
         for (let c = 0; c < gridSize; c++) {
           const idx = r * gridSize + c + 1;
-          if (drawn.has(idx)) continue;
-          const label = plantMap[idx] || "";
+          if (drawn.has(idx)) continue; // Skip if already part of a larger block
+
+          // Use the corrected keys from plantMap
+          const plantKey = plantMap[idx] || "";
+          let label = plantKey ? camelCaseToSpaced(plantKey) : ""; // Display spaced name
           let w = 1, h = 1;
-          if (label) {
-            while (c + w < gridSize && plantMap[idx + w] === label) w++;
-            let ok = true;
-            while (r + h < gridSize && ok) {
-              for (let dx = 0; dx < w; dx++) {
-                if (plantMap[idx + h * gridSize + dx] !== label) { ok = false; break; }
-              }
-              if (ok) h++;
+
+          // Calculate width and height of merged blocks
+          if (plantKey) {
+             // Check width
+             while (c + w < gridSize && plantMap[idx + w] === plantKey) {
+                 w++;
+             }
+             // Check height
+             let heightOk = true;
+             while (r + h < gridSize && heightOk) {
+                 for (let dx = 0; dx < w; dx++) {
+                     if (plantMap[idx + h * gridSize + dx] !== plantKey) {
+                         heightOk = false;
+                         break;
+                     }
+                 }
+                 if (heightOk) {
+                     h++;
+                 }
+             }
+          }
+
+          // Mark all cells covered by this block as drawn
+          for (let dy = 0; dy < h; dy++) {
+            for (let dx = 0; dx < w; dx++) {
+              drawn.add(idx + dy * gridSize + dx);
             }
           }
-          for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) drawn.add(idx + dy * gridSize + dx);
-          drawBlock(c, r, w, h, label, idx);
+
+          // Pass the original plantKey for styling/details lookup
+          drawBlock(c, r, w, h, plantKey, label, idx);
         }
       }
     }
 
-    function drawBlock(col, row, w, h, label, idx) {
-      const x = col * cellSize, y = row * cellSize;
-      if (label && styleMap[label]) {
-        ctx.globalAlpha = 0.2;
-        ctx.fillStyle = styleMap[label].color;
-        ctx.fillRect(x, y, w * cellSize, h * cellSize);
-        ctx.globalAlpha = 1;
-      }
-      if (idx === selectedIndex) {
-        ctx.globalAlpha = 0.2;
-        ctx.fillStyle = '#007acc';
-        ctx.fillRect(x, y, w * cellSize, h * cellSize);
-        ctx.globalAlpha = 1;
-        ctx.lineWidth = 2; ctx.strokeStyle = '#007acc';
-      } else {
-        ctx.lineWidth = 1; ctx.strokeStyle = '#666';
-      }
-      ctx.strokeRect(x, y, w * cellSize, h * cellSize);
-      if (label) {
-        const emoji = styleMap[label]?.emoji || '';
-        const cx = x + (w * cellSize)/2;
-        const cy = y + (h * cellSize)/2;
-        ctx.fillStyle = '#333';
-        ctx.fillText(emoji, cx, cy - 10);
-        ctx.fillText(label, cx, cy + 12);
-      }
-      blocks.push({ x, y, w: w*cellSize, h: h*cellSize, label, idx });
+    // Draw a single (potentially merged) block
+    function drawBlock(col, row, w, h, plantKey, displayLabel, idx) {
+        const x = col * cellSize;
+        const y = row * cellSize;
+        const blockWidth = w * cellSize;
+        const blockHeight = h * cellSize;
+
+        // Use plantKey to get style info
+        const style = plantKey ? styleMap[plantKey] : null;
+
+        // Draw background color if available
+        if (style) {
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = style.color;
+            ctx.fillRect(x, y, blockWidth, blockHeight);
+            ctx.globalAlpha = 1;
+        }
+
+        // Highlight selected block
+        if (idx === selectedIndex) {
+            ctx.globalAlpha = 0.3; // Slightly more visible selection
+            ctx.fillStyle = '#007acc';
+            ctx.fillRect(x, y, blockWidth, blockHeight);
+            ctx.globalAlpha = 1;
+            ctx.lineWidth = 3; // Thicker border for selection
+            ctx.strokeStyle = '#007acc';
+        } else {
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#666';
+        }
+
+        // Draw border
+        ctx.strokeRect(x, y, blockWidth, blockHeight);
+
+        // Draw label and emoji if available
+        if (displayLabel && style) {
+            const emoji = style.emoji || '';
+            const centerX = x + blockWidth / 2;
+            const centerY = y + blockHeight / 2;
+
+            ctx.fillStyle = '#333'; // Text color
+            ctx.font = "24px Arial"; // Emoji font size
+            ctx.fillText(emoji, centerX, centerY - 10); // Emoji slightly above center
+            ctx.font = "14px Arial"; // Label font size
+            ctx.fillText(displayLabel, centerX, centerY + 15); // Label slightly below center
+        }
+
+        // Store block info for click detection (using plantKey for details lookup)
+        blocks.push({ x, y, w: blockWidth, h: blockHeight, plantKey: plantKey, idx });
     }
+
 
     function titleCase(str) {
-      return str.toLowerCase().replace(/(^|[^a-zA-Z])([a-z])/g, (m, sep, char) => sep + char.toUpperCase());
+        if (!str) return "";
+        // Simple title case: capitalize first letter of each word
+        return str.toLowerCase().replace(/([^\s]*)(\s*|$)/g, (match, word, space) => {
+            return word.charAt(0).toUpperCase() + word.slice(1) + space;
+        });
     }
 
+    // --- Event Listeners ---
     canvas.addEventListener('click', e => {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const blk = blocks.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
-      if (blk && blk.label) {
-        selectedIndex = blk.idx;
-        const detail = plantDetails[blk.label];
-        if (detail) {
-          infoDiv.innerHTML = `<h3>${titleCase(detail.fullName)}</h3><p>Care:<br/>${titleCase(detail.care)}</p><br/><p>Harvest Timeline:<br/>${titleCase(detail.harvestTimeline)}</p>`;
-        } else infoDiv.innerHTML = `<em>No data available.</em>`;
+      const scaleX = canvas.width / dpr / rect.width; // Adjust for CSS scaling
+      const scaleY = canvas.height / dpr / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
+      // Find clicked block
+      const clickedBlock = blocks.find(b =>
+        x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h
+      );
+
+      if (clickedBlock && clickedBlock.plantKey) {
+         selectedIndex = clickedBlock.idx; // Use index for selection highlight consistency
+         const detail = plantDetails[clickedBlock.plantKey]; // Use plantKey to find details
+         if (detail) {
+           infoDiv.innerHTML = `<h3>${titleCase(detail.fullName)}</h3><p><strong>Care:</strong><br/>${titleCase(detail.care)}</p><br/><p><strong>Harvest Timeline:</strong><br/>${titleCase(detail.harvestTimeline)}</p>`;
+         } else {
+           infoDiv.innerHTML = `<em>No details available for ${camelCaseToSpaced(clickedBlock.plantKey)}.</em>`;
+         }
       } else {
-        selectedIndex = null;
-        infoDiv.innerHTML = `<em>Click a section to see plant care instructions and harvest timeline.</em>`;
+         // Clicked on empty space or outside grid
+         selectedIndex = null;
+         infoDiv.innerHTML = `<em>Click a section to see plant care instructions.</em>`;
       }
-      drawGrid();
+      drawGrid(); // Redraw to show selection or clear it
     });
 
+    // Deselect when clicking outside the canvas (optional)
     document.addEventListener('click', e => {
-      if (e.target !== canvas) {
-        selectedIndex = null;
-        infoDiv.innerHTML = `<em>Click a section to see plant care instructions.</em>`;
-        drawGrid();
-      }
-    });
+       // Check if the click was outside the canvas AND outside the info/calendar areas
+       if (e.target !== canvas && !infoDiv.contains(e.target) && !calendarDiv.contains(e.target) && e.target !== toggleBtn ) {
+           if (selectedIndex !== null) { // Only redraw if something was selected
+               selectedIndex = null;
+               infoDiv.innerHTML = `<em>Click a section to see plant care instructions.</em>`;
+               drawGrid();
+           }
+       }
+    }, true); // Use capture phase to catch click before canvas listener if needed
 
+    // --- Initial Draw ---
     drawGrid();
+
   </script>
 </body>
 </html>
